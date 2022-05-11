@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e4f72f82-a147-49c3-a289-9599a27e5bff" doc:description="This application is to test how to send three Uri parameters and get data from the databasees based on these values. The database i use is called northwind and the table is Employee and the column names are titleOfCourtesy, city and country . this returns java output, i transform it to csv and write it to disk.  Since our attributes are going to change across the flow, we have to store the original values of our Uri parameters in three variables." >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="338947fd-b936-4919-a806-ebaeb9c96917" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Asq@22w0rd#" database="northwind" />
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="bf7f3347-8b63-400c-91cb-7845aaddd6a7" >
+		<file:connection workingDir="C:\Mulesoft\datafromdatabasees" />
+	</file:config>
+	<flow name="get-data4Flow" doc:id="a5d86097-17b8-46d8-836a-81ee48cec85b" >
+		<http:listener doc:name="Listener" doc:id="cce944c8-47ad-4d97-9636-30847636b7b4" config-ref="HTTP_Listener_config" path="get-data/{titleOfCourtesy}/{city}/{country}" doc:description="This application is to test how to send three Uri parameters and get data from the databasees based on these values. The database i use is called northwind and the table is Employee and the column names are titleOfCourtesy, city and country . this returns java output, i transform it to csv and write it to disk.  Since our attributes are going to change across the flow, we have to store the original values of our Uri parameters in three variables."/>
+		<set-variable value="#[attributes.uriParams.titleOfCourtesy]" doc:name="Set titleOfCourtesy" doc:id="3e58cb19-effa-415c-8c4f-bd83a3eb0169" variableName="titleOfCourtesy"/>
+		<set-variable value="#[attributes.uriParams.city]" doc:name="Set City" doc:id="d89dbdf0-eed3-48de-b308-4312b854636a" variableName="city"/>
+		<set-variable value="#[attributes.uriParams.country]" doc:name="Set Country" doc:id="f5ce2e8d-f2ae-451c-ae01-26f93fe25b67" variableName="country"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d46625f7-dd0a-4cc3-bb99-9852b8940fd2" message='#["titleOfCourtesy: " ++ attributes.uriParams.titleOfCourtesy ++ ", City: " ++ attributes.uriParams.city ++ ", Country: " ++ attributes.uriParams.country ++ " also Set titleOfCourtesy variable is: " ++ vars.titleOfCourtesy ++ ", Set City variable is: " ++ vars.city ++ " and Set Country variable is: " ++ vars.country]'/>
+		<db:select doc:name="Get data from MySQL" doc:id="d84abf18-08e2-4f20-89fd-53c69c5bdb0f" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from employee where titleOfCourtesy= :titleOfCourtesy and city= :city and country= :country]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'titleOfCourtesy' : attributes.uriParams.titleOfCourtesy, 'city' : attributes.uriParams.city, 'country' : attributes.uriParams.country}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="To csv" doc:id="59ba676e-9795-4dd2-a244-aad149a6195e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write To Disk" doc:id="bd687d56-48de-4dc1-a49d-b8461f37682a" config-ref="File_Config" path="#[vars.titleOfCourtesy ++ '_' ++ vars.city ++ '_' ++ vars.country ++ &quot;.csv&quot;]"/>
+	</flow>
+</mule>
